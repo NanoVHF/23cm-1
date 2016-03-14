@@ -65,6 +65,8 @@ uint8_t  sig_level;     // relative signal strength
 int8_t   squelch_level; // squelch level (0 - 9)
 uint16_t bucket;        // sig level 'damper'' 
 uint8_t  escape;
+int8_t   level,maxlevel,dlay;       // level max memory, delay & speed for peak return
+
 
 boolean  tx = false; // if tx = false then receive, if tx = true then transmit
 int8_t   last=0;
@@ -693,7 +695,6 @@ void init_Timer1() { // deliberately chosen NOT to include TimerOne.h to have sh
 
 void displayS() {                   // display relative S-signalbar in the lower row during RX
 
-int8_t   level,maxlevel,dlay;       // level max memory, delay & speed for peak return
 uint32_t lastT=0;
 
 byte  fill[]={0x20,0x00,0x01,0x02,0x03,0xff};      // character used for fill 

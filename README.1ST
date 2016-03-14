@@ -6,9 +6,8 @@
  * 
  * Please, check your PCB version first!
  * Remco PA3FYM
- * 
  *
- *
+ * PLEASE . . . view the file Arduino-Nano-Mini-pinmapping.jpg to prevent mistakes!
  *
  *  Arduino Nano/Mini           original               Arduino Nano/Mini
  *  'pin'                      ATmega328                    'pin'

@@ -1,8 +1,14 @@
 # 23cm
-Arduino source code for 23cm JPD transceiver
+Arduino source code for 23cm JPD transceiver.
 
-This is the first commit, more information will follow.
+The original ATMega328 is replaced by an Arduino Mini/Nano.
+To interface the Arduino to the original DIL28 socket
+rewiring is mandatory.
 
-In the meanwhile view/download the JPG picture in this branch.
+Therefore ... PLEASE read/view the following files in this branch FIRST:
 
-(click on the JPG file and press the 'RAW' button for full size)
+1. README.1ST
+2. Arduino-Nano-Mini-pinmapping.jpg
+3. mini_on_28dil.jpg
+
+For pictures: click on the JPG file and press the 'RAW' button to view full size.

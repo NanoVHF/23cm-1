@@ -16,7 +16,8 @@
  * 
  * Ported/rewritten to/for the Arduino IDE by PA3FYM.
  *
- * v0.1 March 4 2016 Initial release by PA3FYM
+ * v0.1  March 4 2016 Initial release by PA3FYM
+ * v0.11 March 14 2016 changed LCD_LE from pin10 to pin12 
  *   
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
  * 
@@ -103,7 +104,7 @@ byte block[8][8]=
 
 
 
-LiquidCrystal lcd(11,10,4,5,6,7);  // RS, EN, D4, D5, D6, D7  initialize LCD display
+LiquidCrystal lcd(11,12,4,5,6,7);  // RS, EN, D4, D5, D6, D7  initialize LCD display
 
 void init_pll() { //initialize PLL, raster is (still) fixed to 25 kHz
 

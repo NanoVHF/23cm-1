@@ -2,6 +2,7 @@
 Arduino source code for 23cm JPD transceiver.
 
 The original ATMega328 is replaced by an Arduino Mini/Nano.
+
 To interface the Arduino to the original DIL28 socket
 rewiring is mandatory.
 

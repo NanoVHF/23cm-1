@@ -277,8 +277,7 @@ int8_t tune;
      else  {                                          // PTT is released or not pressed, in other words, we are in RX mode
 
             sig_level = rssi();                       // fetch signal strength
-            if (!squelch_level) digitalWrite(mute,0); // mute audio depending on squelch level and signal strength
-            else digitalWrite(mute,(squelch_level > sig_level/10)); // 0 = open, 1 = audio mute
+            squelch(); 
 
             writeSMeter();                               // display relative signal strength on lower row 
              
@@ -471,8 +470,7 @@ int8_t flap,i;
                  Serial.print(rssi());Serial.print(" ");Serial.println(squelch_level);
                  delay(50);
 #endif
-                 if (!squelch_level) digitalWrite(mute,0); // if level = 0 , open audio ( = noise ...)
-                 else digitalWrite(mute,(squelch_level > rssi()/10)); // else mute audio
+                 squelch();
                  } // while !rot_push
                  
                  lcd.clear();                     // clear display 
@@ -678,47 +676,6 @@ void init_Timer1() { // deliberately chosen NOT to include TimerOne.h to have sh
      interrupts();                  // enable interrupts 
 }
 
-//void displayS() {                   // display relative S-signalbar in the lower row during RX
-//
-//uint32_t lastT=0;
-//
-//byte  fill[]={0x20,0x00,0x01,0x02,0x03,0xff};      // character used for fill 
-//byte  peak[]={0x20,0x00,0x04,0x05,0x06,0x07,0x20}; // character used for peak 
-//
-//
-//#define t_refresh    100            // msec bar refresh rate
-//#define t_peakhold   5*t_refresh    // msec peak hold time before return
-//
-//  if (millis() < lastT) return;     // determine 1 ms time stamps
-//  lastT += t_refresh;   
-// 
-//  level = sig_level << 1;           // max rssi() is 73 (@FYM), so multiply with 2 
-//                                    // for full scale (estimated guess ;-)                                
-//    
-//  lcd.setCursor(0,1);               // select lower row
-//  lcd.write("S ");                  // 'S'peaks for itself ;-)
-//  
-//  for (uint8_t i=2 ; i<16 ; i++) {  // we have 14 columns left
-//  
-//    int8_t f = constrain(level    -i*5,0,5 ); // constrain values 
-//    int8_t p = constrain(maxlevel -i*5,0,6 );
-//    
-//    if (f) lcd.write(fill[f]); else lcd.write(peak[p]); // depending on phenomenon write bars on the lower row
-//  }
-//  
-//  if (level > maxlevel) {            // if current level > maxlevel
-//       
-//    maxlevel = level;                // save max level
-//    dlay = -t_peakhold/t_refresh;    // Starting delay value. negative = peak is stable
-//  }
-//  
-//  else {                             // we have a lower level than (former) maxlevel
-//  
-//    if (dlay > 0) maxlevel -= dlay;  // speed up attack time when signal increases
-//
-//    if (maxlevel < 0) maxlevel=0; else dlay++; // keep maxlevel >=0 , and when maxlevel decays increase delay
-//  }
-//}
 
 #define t_refresh    100            // msec bar refresh rate
 uint32_t lastT=0;
@@ -759,4 +716,10 @@ void writeSMeter() {
   // Always print right bar.
   lcd.print((char) 1);
   lcd.print(min(9,bucket * 10 / 1023));
+}
+
+void squelch() {
+    // Mute audio based on Squelch level
+  int level = min(9,sig_level * 10 / 1023);
+  digitalWrite(mute, level < squelch_level);
 }

@@ -62,9 +62,9 @@ uint32_t  freq;            // frequency in kHz  <-- float takes 1.5 kB memory ex
 int16_t   shifts[] = {0,-6000,-28000}; // common repeater shifts in kHz in Europe, 0 = no shift (simplex)
 
 
-uint8_t  sig_level;     // relative signal strength
+int      sig_level;     // relative signal strength
 int8_t   squelch_level; // squelch level (0 - 9)
-uint16_t bucket;        // sig level 'damper'' 
+int      bucket;        // sig level 'damper'' 
 uint8_t  escape;
 int8_t   level,maxlevel,dlay;       // level max memory, delay & speed for peak return
 
@@ -89,17 +89,12 @@ uint16_t count1; // Timer1 counter value
 
 
  
-byte block[8][8]=
+byte block[4][8]=
 {
-  { 0x10,0x10,0x10,0x10,0x10,0x10,0x10,0x10 },  // define character for fill S-character
-  { 0x18,0x18,0x18,0x18,0x18,0x18,0x18,0x18 },
-  { 0x1C,0x1C,0x1C,0x1C,0x1C,0x1C,0x1C,0x1C },
-  { 0x1E,0x1E,0x1E,0x1E,0x1E,0x1E,0x1E,0x1E },
-
-  { 0x08,0x08,0x08,0x08,0x08,0x08,0x08,0x08 },  // define character for peak S-character
-  { 0x04,0x04,0x04,0x04,0x04,0x04,0x04,0x04 },
-  { 0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02 },
-  { 0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01 },
+  { B00000, B10000, B00000, B00000, B00000, B00000, B00000, B10000 },  // :
+  { B00000, B10000, B10000, B10000, B10000, B10000, B10000, B10000 },  // |
+  { B00000, B10000, B10100, B10100, B10100, B10100, B10100, B10000 },  // ||
+  { B00000, B10000, B10101, B10101, B10101, B10101, B10101, B10000 }   // |||
 };
 
 
@@ -244,7 +239,7 @@ PORTB |= B00011111; // set pull up resistors for PB5-PB0, leave PB7-6 untouched,
 lcd.begin(16,2);    // we have a 16 column, 2 row LCD display
 lcd.print("Hello Dude!"); //
 
-for( int i=0 ; i<8 ; i++) lcd.createChar(i,block[i]);  // create charcters for S-meter
+for( int i=0 ; i<4 ; i++) lcd.createChar(i,block[i]);  // create charcters for S-meter
 
 delay(1000);
 lcd.clear();
@@ -285,7 +280,7 @@ int8_t tune;
             if (!squelch_level) digitalWrite(mute,0); // mute audio depending on squelch level and signal strength
             else digitalWrite(mute,(squelch_level > sig_level/10)); // 0 = open, 1 = audio mute
 
-            displayS();                               // display relative signal strength on lower row 
+            writeSMeter();                               // display relative signal strength on lower row 
              
             if (last > 0) {                           // if last status is 1, this indicates TX --> RX transition
               digitalWrite(txon,0);                   // switch off TX part
@@ -390,20 +385,9 @@ void refresh() {                       // refreshes display info and programs PL
 }
 
 int16_t rssi() {                       // poll analog pin A1 (PC1) connected to rssi pin MC3362
-
-uint8_t sig;
-                                        //--- this value determined so that with only noise sig = ca. 0
-        sig = (1023-analogRead(Smeter))-54; // weak signal adc = 1023, strong adc = 0
-
-        if (sig < 0) sig = 0;             // negative s values do not exist ;-)
-
-        //the 3 lines below form a simple low pass filter to 'damp' the s values a little
-                                          // JPD's low pass filter gives some 'damping' of the s outcome indeed :-)
-        sig += bucket;                    // 'damp' S-meter signal so that S-meter falls slowly
-        sig >>= 1;                        // divide by 2, so that during polling values will not 'flicker' 
-        bucket = sig;                     // store in bucket for next poll cycle
-    
-        return sig;                       // publish result
+  int raw = analogRead(Smeter);
+  int rssi = map(raw,934, 982, 1023,0);
+  return rssi; // Return unflitered (for fast mute)
 }
 
 int rot_dial() {                          // INT1 ISR handles rotary ports PD3 and PD2 <-- INT1
@@ -694,47 +678,85 @@ void init_Timer1() { // deliberately chosen NOT to include TimerOne.h to have sh
      interrupts();                  // enable interrupts 
 }
 
-void displayS() {                   // display relative S-signalbar in the lower row during RX
-
-uint32_t lastT=0;
-
-byte  fill[]={0x20,0x00,0x01,0x02,0x03,0xff};      // character used for fill 
-byte  peak[]={0x20,0x00,0x04,0x05,0x06,0x07,0x20}; // character used for peak 
-
+//void displayS() {                   // display relative S-signalbar in the lower row during RX
+//
+//uint32_t lastT=0;
+//
+//byte  fill[]={0x20,0x00,0x01,0x02,0x03,0xff};      // character used for fill 
+//byte  peak[]={0x20,0x00,0x04,0x05,0x06,0x07,0x20}; // character used for peak 
+//
+//
+//#define t_refresh    100            // msec bar refresh rate
+//#define t_peakhold   5*t_refresh    // msec peak hold time before return
+//
+//  if (millis() < lastT) return;     // determine 1 ms time stamps
+//  lastT += t_refresh;   
+// 
+//  level = sig_level << 1;           // max rssi() is 73 (@FYM), so multiply with 2 
+//                                    // for full scale (estimated guess ;-)                                
+//    
+//  lcd.setCursor(0,1);               // select lower row
+//  lcd.write("S ");                  // 'S'peaks for itself ;-)
+//  
+//  for (uint8_t i=2 ; i<16 ; i++) {  // we have 14 columns left
+//  
+//    int8_t f = constrain(level    -i*5,0,5 ); // constrain values 
+//    int8_t p = constrain(maxlevel -i*5,0,6 );
+//    
+//    if (f) lcd.write(fill[f]); else lcd.write(peak[p]); // depending on phenomenon write bars on the lower row
+//  }
+//  
+//  if (level > maxlevel) {            // if current level > maxlevel
+//       
+//    maxlevel = level;                // save max level
+//    dlay = -t_peakhold/t_refresh;    // Starting delay value. negative = peak is stable
+//  }
+//  
+//  else {                             // we have a lower level than (former) maxlevel
+//  
+//    if (dlay > 0) maxlevel -= dlay;  // speed up attack time when signal increases
+//
+//    if (maxlevel < 0) maxlevel=0; else dlay++; // keep maxlevel >=0 , and when maxlevel decays increase delay
+//  }
+//}
 
 #define t_refresh    100            // msec bar refresh rate
-#define t_peakhold   5*t_refresh    // msec peak hold time before return
+uint32_t lastT=0;
 
-  if (millis() < lastT) return;     // determine 1 ms time stamps
-  lastT += t_refresh;   
- 
-  level = sig_level << 1;           // max rssi() is 73 (@FYM), so multiply with 2 
-                                    // for full scale (estimated guess ;-)                                
-    
-  lcd.setCursor(0,1);               // select lower row
-  lcd.write("S ");                  // 'S'peaks for itself ;-)
-  
-  for (uint8_t i=2 ; i<16 ; i++) {  // we have 14 columns left
-  
-    int8_t f = constrain(level    -i*5,0,5 ); // constrain values 
-    int8_t p = constrain(maxlevel -i*5,0,6 );
-    
-    if (f) lcd.write(fill[f]); else lcd.write(peak[p]); // depending on phenomenon write bars on the lower row
-  }
-  
-  if (level > maxlevel) {            // if current level > maxlevel
-       
-    maxlevel = level;                // save max level
-    dlay = -t_peakhold/t_refresh;    // Starting delay value. negative = peak is stable
-  }
-  
-  else {                             // we have a lower level than (former) maxlevel
-  
-    if (dlay > 0) maxlevel -= dlay;  // speed up attack time when signal increases
+void writeSMeter() {
+  long now = millis();
+  if (now < lastT) return;     // determine 1 ms time stamps
+  lastT = now + t_refresh;   
 
-    if (maxlevel < 0) maxlevel=0; else dlay++; // keep maxlevel >=0 , and when maxlevel decays increase delay
+  // Meter damping. 
+  int nrSamples = (sig_level > bucket) ? 1 : 4; // Attack = 1, Decay = 6
+  bucket = bucket + ((sig_level - bucket) / nrSamples);
+
+  lcd.setCursor(0,1);
+  lcd.write("S ");
+  
+  // There are 10 positions with 3 bars each. Calculate the number
+  // of bars to display.
+  const int maxbars = 11 * 3;
+  int displaybars = bucket * maxbars / 1023;
+
+  for (int barindex = 0; barindex < maxbars; barindex +=3) {
+    int thischar = min(displaybars,3); 
+    if (barindex == 0 && thischar == 0) {
+      // Always print the left bar, even if the signal is 0.
+      lcd.print((char) 1);
+    } else {
+      switch (thischar) {
+        case 3:  lcd.print((char) 3); break;  // triple bar
+        case 2:  lcd.print((char) 2); break;  // double bar
+        case 1:  lcd.print((char) 1); break;  // single bar
+        default: lcd.print((char) 0); break;  // no bar
+      }
+    }
+    displaybars -= 3;
   }
+
+  // Always print right bar.
+  lcd.print((char) 1);
+  lcd.print(min(9,bucket * 10 / 1023));
 }
-
-
-
